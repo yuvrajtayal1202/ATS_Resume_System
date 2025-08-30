@@ -10,10 +10,9 @@ An interactive **Streamlit app** powered by **Google Gemini 1.5** that analyzes 
 - Upload your **resume (PDF)**.  
 - Paste a **job description**.  
 - Get:
-  - 📋 Resume Summary  
-  - 🛠️ Skill Improvement Suggestions  
-  - 🔑 Missing Keywords  
   - 📊 ATS Match % (with reasoning)  
+  - 🔑 Missing Keywords  
+  - 📋 Resume Summary  
 
 ---
 
@@ -22,8 +21,6 @@ An interactive **Streamlit app** powered by **Google Gemini 1.5** that analyzes 
 ### Home Page
 ![Home Page](./screenshots/home.png)
 
-### Resume Uploaded & Job Description Entered
-![Resume Uploaded](./screenshots/resume_uploaded.png)
 
 ### ATS Analysis Result
 ![ATS Match](./screenshots/ats_result.png)
