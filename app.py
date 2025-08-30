@@ -55,6 +55,21 @@ def generate_response(prompt):
     return response.text if response else "No response."
 
 # Streamlit UI
+
+
+
+st.set_page_config(
+    page_title="ATS Resume Analyzer",
+    page_icon="📄",
+    # layout="wide",
+    initial_sidebar_state="expanded",
+    # menu_items={
+    #     'Get Help': 'https://www.example.com/help',
+    #     'About': '# This is a sample Streamlit app.'
+    # }
+)
+
+
 st.title("📄 ATS Resume Analyzer")
 
 job_desc = st.text_area("Paste Job Description:", height=200)
