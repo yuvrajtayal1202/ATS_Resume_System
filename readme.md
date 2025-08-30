@@ -22,8 +22,11 @@ An interactive **Streamlit app** powered by **Google Gemini 1.5** that analyzes 
 ![Home Page](./screenshots/home.png)
 
 
+### Uploaded Job Description and Resume
+![JD and Resume](./screenshots/med.png)
+
 ### ATS Analysis Result
-![ATS Match](./screenshots/ats_result.png)
+![ATS Match](./screenshots/result.png)
 
 *(Add screenshots in a `screenshots/` folder inside the repo)*
 
