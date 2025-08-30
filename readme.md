@@ -28,7 +28,7 @@ An interactive **Streamlit app** powered by **Google Gemini 1.5** that analyzes 
 ### ATS Analysis Result
 ![ATS Match](./screenshots/result.png)
 
-*(Add screenshots in a `screenshots/` folder inside the repo)*
+<!-- *(Add screenshots in a `screenshots/` folder inside the repo)* -->
 
 ---
 
