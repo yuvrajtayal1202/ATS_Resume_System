@@ -1,135 +1,86 @@
-from dotenv import load_dotenv
-load_dotenv()
-import os
+
 import streamlit as st
-from PIL import Image
-import pdf2image
 import google.generativeai as genai
-import io
-import pdfplumber
+import os
+import PyPDF2 as pdf
+from dotenv import load_dotenv
 
-# ---------------- Gemini API Config ----------------
-genai.configure(api_key=os.getenv('GOOGLE_API_KEY'))
+# Load environment variables
+load_dotenv()
 
-# Load Gemini Vision model
-vision_model = genai.GenerativeModel("gemini-1.5-flash") 
+# Configure Gemini API
+genai.configure(api_key=os.getenv("GOOGLE_API_KEY"))
 
+# Function to generate response using Gemini
+def generate_response(prompt):
+    model = genai.GenerativeModel("gemini-1.5-pro")  # or gemini-1.5-flash
+    response = model.generate_content(prompt)
+    return response.text
 
-# ---------------- Helper Functions ----------------
-def get_gemini_response(job_desc, resume_text, prompt):
-    """
-    Generate a response using Gemini Vision model.
-    """
-    if not resume_text.strip():
-        return "⚠️ Resume text could not be extracted. Please try another PDF."
-
-    input_text = f"""
-    Job Description:
-    {job_desc}
-
-    Candidate Resume:
-    {resume_text}
-
-    Task: {prompt}
-    """
-    try:
-        response = vision_model.generate_content([input_text])
-        return response.text if response and response.text else "No response received."
-    except Exception as e:
-        return f"Error from Gemini API: {e}"
-
-
-def input_pdf(file_bytes):
-    """
-    Extract text from PDF using two approaches:
-    1. Try Gemini Vision OCR (page by page).
-    2. If empty, fallback to pdfplumber (direct text extraction).
-    """
+# Function to extract text from PDF
+def extract_text_from_pdf(file):
+    reader = pdf.PdfReader(file)
     text = ""
+    for page in reader.pages:
+        if page.extract_text():
+            text += page.extract_text() + "\n"
+    return text
 
-    # ---- Try Gemini Vision OCR first ----
-    try:
-        images = pdf2image.convert_from_bytes(file_bytes)
-        for image in images:
-            response = vision_model.generate_content(
-                ["Extract all text from this resume page:", image]
-            )
-            if response and response.text:
-                text += response.text + "\n"
-    except Exception as e:
-        print("Gemini Vision failed:", e)
+# ATS Prompt Template
+def ats_match_prompt(job_desc, resume_text):
+    return f"""
+You are an ATS (Applicant Tracking System). Compare the candidate's resume against the job description and give a detailed analysis.
 
-    # ---- Fallback to pdfplumber ----
-    if not text.strip():
-        try:
-            with pdfplumber.open(io.BytesIO(file_bytes)) as pdf:
-                for page in pdf.pages:
-                    extracted = page.extract_text()
-                    if extracted:
-                        text += extracted + "\n"
-        except Exception as e:
-            return f"Error extracting text: {e}"
+Job Description:
+{job_desc}
 
-    return text.strip()
+Candidate Resume:
+{resume_text}
 
+Tasks:
+1. Provide a **percentage match** between the resume and the job description (0–100%).
+2. List the **key strengths** of the resume that align with the job description.
+3. Highlight the **missing skills/keywords** that ATS would look for but are not found in the resume.
+4. Give **actionable recommendations** for improving the resume to increase the ATS score.
+
+Important:
+- Start with the percentage match on the first line (example: "ATS Match: 76%").
+- Then give the detailed explanation.
+- Keep the response clear and structured.
+"""
 
 # ---------------- Streamlit UI ----------------
-st.title("📄 ATS Resume System with Gemini Vision")
+st.set_page_config(page_title="ATS Resume Analyzer", page_icon="📄", layout="wide")
+st.title("📄 ATS Resume Analyzer with Gemini")
 
 # Job description input
-input_text = st.text_area("Job Description:", key="input")
+job_desc = st.text_area("Paste the Job Description here:", height=200)
 
-# PDF uploader
+# Resume upload
 uploaded_file = st.file_uploader("Upload your Resume (PDF)", type=["pdf"])
 
+# Analyze button
+if st.button("🔍 Analyze Resume"):
+    if uploaded_file and job_desc.strip():
+        with st.spinner("Extracting resume and analyzing..."):
+            # Extract resume text
+            resume_text = extract_text_from_pdf(uploaded_file)
 
-# Action buttons
-submit1 = st.button("📋 Tell me about my resume")
-submit2 = st.button("🛠️ How can I improve my skills?")
-submit3 = st.button("🔑 What keywords are missing?")
-submit4 = st.button("📊 Percentage match with job description?")
+            if not resume_text.strip():
+                st.error("⚠️ No text could be extracted from the PDF. Please upload a text-based resume.")
+            else:
+                # Build prompt
+                prompt = ats_match_prompt(job_desc, resume_text)
 
-resume_text = ""
-file_bytes = None
+                # Get Gemini response
+                result = generate_response(prompt)
 
-if uploaded_file is not None:
-    st.success("✅ PDF uploaded successfully!")
-    if file_bytes is None:  # make sure we don't read it twice
-        file_bytes = uploaded_file.read()
-    resume_text = input_pdf(file_bytes)
+                # Display result
+                st.subheader("📊 ATS Analysis Result")
+                st.write(result)
 
-if resume_text.strip():
-    if submit1:
-        st.subheader("Resume Summary")
-        st.write(get_gemini_response(
-            input_text,
-            resume_text,
-            "Summarize this resume and highlight strengths."
-        ))
-
-    elif submit2:
-        st.subheader("Skill Improvement Suggestions")
-        st.write(get_gemini_response(
-            input_text,
-            resume_text,
-            "Suggest specific skills I should learn to better match the job description."
-        ))
-
-    elif submit3:
-        st.subheader("Missing Keywords")
-        st.write(get_gemini_response(
-            input_text,
-            resume_text,
-            "List important keywords from the job description that are missing in my resume."
-        ))
-
-    elif submit4:
-        st.subheader("ATS Match Percentage")
-        st.write(get_gemini_response(
-            input_text,
-            resume_text,
-            "Compare the job description and resume, and give a percentage match for ATS systems. "
-            "Provide just a percentage value with short reasoning."
-        ))
-else:
-    st.warning("⚠️ No text extracted from PDF. Try uploading another file or check if it’s scanned (image-only).")
+                # Optional: show extracted resume preview
+                with st.expander("🔍 Preview Extracted Resume Text"):
+                    st.text_area("Resume Text", resume_text[:2000], height=300)
+    else:
+        st.warning("⚠️ Please provide both a job description and a resume.")
